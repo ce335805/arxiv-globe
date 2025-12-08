@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function Navbar() {
-    const pathname = usePathname(); // Get the current route
+    const pathname = usePathname();
 
     return (
         <nav className="bg-gray-800 text-white p-4">

@@ -15,8 +15,8 @@ export default function RootLayout({
     return (
         <html lang="en">
         <body>
-        <Navbar /> {/* Add the Navbar component here */}
-        <main className="p-4">{children}</main> {/* Add padding around page content */}
+        <Navbar />
+        <main className="p-4">{children}</main>
         </body>
         </html>
     );
