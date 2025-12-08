@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "./components/Navbar"; // Import the Navbar component
 
 export const metadata: Metadata = {
-    title: "My App",
-    description: "Welcome to my Next.js app!",
+    title: "arXiv Globe Visualization",
+    description: "Visualize scientific collaboration on a 3D globe",
 };
 
 export default function RootLayout({
@@ -15,8 +14,7 @@ export default function RootLayout({
     return (
         <html lang="en">
         <body>
-        <Navbar />
-        <main className="p-4">{children}</main>
+        <main>{children}</main>
         </body>
         </html>
     );
