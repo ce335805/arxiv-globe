@@ -3,6 +3,7 @@
 import Globe from "./components/Globe";
 import LatexRenderer from "./components/LatexRenderer";
 import { useState, useEffect } from "react";
+import type { PaperData } from "./types/paper";
 
 // Hard-coded arXiv categories organized by field
 const ARXIV_CATEGORIES = [
@@ -38,43 +39,12 @@ const ARXIV_CATEGORIES = [
   },
 ];
 
-interface Affiliation {
-  institution: string;
-  address: string | null;
-  country: string;
-  latitude: number | null;
-  longitude: number | null;
-  geocoded: boolean;
-}
-
-interface Author {
-  name: string;
-}
-
-interface PaperData {
-  arxiv_id: string;
-  title: string;
-  authors: Author[];
-  abstract: string;
-  published: string;
-  categories: string[];
-  affiliations: Affiliation[];
-  metadata: {
-    index: number;
-    category: string;
-    total_affiliations: number;
-    geocoded_affiliations: number;
-    has_more: boolean;
-  };
-}
-
 export default function Home() {
-  const [selectedCategory, setSelectedCategory] = useState("cs.AI");
+  const [selectedCategory, setSelectedCategory] = useState("cond-mat.str-el");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [paperData, setPaperData] = useState<PaperData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [abstractExpanded, setAbstractExpanded] = useState(false);
 
   // Fetch paper data
   const fetchPaper = async (category: string, index: number) => {
@@ -107,18 +77,17 @@ export default function Home() {
     const nextIndex = currentIndex + 1;
     setCurrentIndex(nextIndex);
     fetchPaper(selectedCategory, nextIndex);
-    setAbstractExpanded(false);
   };
 
   return (
-    <div className="flex flex-col bg-white min-h-screen">
+    <div className="flex flex-col bg-white min-h-screen max-w-screen-xl mx-auto">
       {/* Top Controls */}
-      <div className="flex items-center gap-2 p-3 bg-gray-900 border-b border-gray-700">
+      <div className="flex items-center gap-2 p-2 sm:p-3 bg-gray-900 border-b border-gray-700">
         {/* Category Dropdown */}
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="flex-1 px-3 py-2 bg-gray-800 text-white text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+          className="flex-1 px-2 sm:px-3 py-2 bg-gray-800 text-white text-xs sm:text-sm rounded border border-gray-600 focus:outline-none focus:border-blue-500"
         >
           {ARXIV_CATEGORIES.map((group) => (
             <optgroup key={group.label} label={group.label}>
@@ -133,7 +102,7 @@ export default function Home() {
 
         {/* Next Button */}
         <button
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 sm:px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleNext}
           disabled={loading || !paperData?.metadata.has_more}
         >
@@ -141,26 +110,35 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Paper Information */}
-      <div className="px-4 py-6 space-y-4">
-        {loading && (
-          <div className="text-base text-black">Loading paper...</div>
-        )}
+      {/* Globe - positioned first to start at top */}
+      <div className="relative w-full h-[400px] sm:h-[550px] lg:h-[650px]">
+        <Globe affiliations={paperData?.affiliations} />
 
-        {error && (
-          <div className="text-base text-black">Error: {error}</div>
-        )}
+        {/* Title Section - absolutely positioned over the globe */}
+        <div className="absolute top-0 left-0 right-0 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 z-10">
+          {loading && (
+            <div className="text-sm sm:text-base text-black">Loading paper...</div>
+          )}
 
-        {paperData && !loading && (
-          <>
-            {/* Title */}
+          {error && (
+            <div className="text-sm sm:text-base text-black">Error: {error}</div>
+          )}
+
+          {paperData && !loading && (
             <LatexRenderer
               text={paperData.title}
-              className="text-2xl font-bold text-black leading-tight"
+              className="text-xl sm:text-2xl lg:text-3xl font-bold text-black leading-tight"
             />
+          )}
+        </div>
+      </div>
 
+      {/* Additional Paper Information */}
+      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        {paperData && !loading && (
+          <>
             {/* Authors */}
-            <div className="text-base text-black">
+            <div className="text-sm sm:text-base text-black">
               <span className="font-semibold">Authors: </span>
               {paperData.authors.map((author, idx) => (
                 <span key={idx}>
@@ -171,12 +149,12 @@ export default function Home() {
             </div>
 
             {/* Affiliations */}
-            <div className="text-base text-black">
+            <div className="text-sm sm:text-base text-black">
               <div className="font-semibold mb-2">Affiliations:</div>
               {paperData.affiliations.map((affiliation, idx) => (
-                <div key={idx} className="ml-4 mb-1">
+                <div key={idx} className="ml-3 sm:ml-4 mb-1">
                   <div>{affiliation.institution}</div>
-                  <div className="text-sm">
+                  <div className="text-xs sm:text-sm">
                     {affiliation.address && `${affiliation.address}, `}
                     {affiliation.country}
                   </div>
@@ -185,30 +163,15 @@ export default function Home() {
             </div>
 
             {/* Abstract */}
-            <div className="text-base text-black">
-              <button
-                onClick={() => setAbstractExpanded(!abstractExpanded)}
-                className="font-semibold flex items-center gap-1 hover:underline"
-              >
-                Abstract
-                <span className="text-sm">
-                  {abstractExpanded ? "▼" : "▶"}
-                </span>
-              </button>
-              {abstractExpanded && (
-                <LatexRenderer
-                  text={paperData.abstract}
-                  className="mt-2 leading-relaxed"
-                />
-              )}
+            <div className="text-sm sm:text-base text-black">
+              <div className="font-semibold mb-2">Abstract</div>
+              <LatexRenderer
+                text={paperData.abstract}
+                className="leading-relaxed"
+              />
             </div>
           </>
         )}
-      </div>
-
-      {/* Globe */}
-      <div className="w-full h-[600px]">
-        <Globe />
       </div>
     </div>
   );

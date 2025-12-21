@@ -51,17 +51,23 @@ export const drawLandmassOnGlobe = (
             // Use latLonToVector3 for consistent coordinate conversion
             const position = latLonToVector3(lat, long, 1.001);
 
-            const m = new Three.Matrix4();
-            const vecX = new Three.Vector3(1, 0, 0);
-            m.makeRotationAxis(vecX, -lat * DEG2RAD);
-            geometryCircle.applyMatrix4(m);
+            // Calculate the radial direction (normalized position from center)
+            const radialDirection = position.clone().normalize();
 
-            const vecY = new Three.Vector3(0, 1, 0);
-            m.makeRotationAxis(vecY, (long + 180) * DEG2RAD);
-            geometryCircle.applyMatrix4(m);
+            // Create quaternion to rotate circle normal (+Z) to radial direction
+            const initialNormal = new Three.Vector3(0, 0, 1);
+            const quaternion = new Three.Quaternion();
+            quaternion.setFromUnitVectors(initialNormal, radialDirection);
 
-            m.makeTranslation(position.x, position.y, position.z);
-            geometryCircle.applyMatrix4(m);
+            // Apply rotation to align circle with radial direction
+            const rotationMatrix = new Three.Matrix4();
+            rotationMatrix.makeRotationFromQuaternion(quaternion);
+            geometryCircle.applyMatrix4(rotationMatrix);
+
+            // Translate to final position
+            const translationMatrix = new Three.Matrix4();
+            translationMatrix.makeTranslation(position.x, position.y, position.z);
+            geometryCircle.applyMatrix4(translationMatrix);
 
             geometries.push(geometryCircle);
         }
@@ -431,4 +437,107 @@ export const removeCurves = (
 
     // Clear the group
     curveGroup.clear();
+};
+
+/**
+ * Create a self-returning loop curve for a single affiliation marker.
+ * The curve extends from the marker, arcs outward, and returns to the same point.
+ *
+ * @param affiliation - Single affiliation coordinate
+ * @param options - Visual and geometric options for the curve
+ * @returns Three.Group containing the loop curve mesh
+ */
+export const createSelfLoopCurve = (
+    affiliation: { latitude: number; longitude: number; geocoded?: boolean },
+    options?: {
+        color?: number;
+        tubeRadius?: number;
+        tubularSegments?: number;
+        radialSegments?: number;
+        emissiveIntensity?: number;
+        markerRadius?: number;
+        loopHeight?: number;
+    }
+): Three.Group => {
+    const {
+        color = 0x64b5f6,
+        tubeRadius = 0.003,
+        tubularSegments = 64,
+        radialSegments = 8,
+        emissiveIntensity = 0.6,
+        markerRadius = 1.005,
+        loopHeight = 0.3
+    } = options || {};
+
+    const curveGroup = new Three.Group();
+
+    // Convert lat/lon to Vector3 position
+    const position = latLonToVector3(
+        affiliation.latitude,
+        affiliation.longitude,
+        markerRadius
+    );
+
+    // Get the radial direction (normalized position from center)
+    const radialDir = position.clone().normalize();
+
+    // Calculate a tangent direction (perpendicular to radial)
+    // We'll use the cross product with the Y-axis to get a tangent
+    // If the point is at the poles, use X-axis instead
+    let tangent: Three.Vector3;
+    if (Math.abs(radialDir.y) > 0.99) {
+        // Near poles, use X-axis
+        tangent = new Three.Vector3(1, 0, 0).cross(radialDir).normalize();
+    } else {
+        // Normal case, use Y-axis
+        tangent = new Three.Vector3(0, 1, 0).cross(radialDir).normalize();
+    }
+
+    // Create control points for the loop
+    // The loop will extend along the tangent direction and upward
+    const extendDistance = loopHeight;
+
+    // First control point: extend in tangent direction and slightly outward
+    const control1 = position.clone()
+        .add(tangent.clone().multiplyScalar(extendDistance))
+        .add(radialDir.clone().multiplyScalar(extendDistance * 0.5));
+
+    // Second control point: extend in opposite tangent direction and slightly outward
+    const control2 = position.clone()
+        .add(tangent.clone().multiplyScalar(-extendDistance))
+        .add(radialDir.clone().multiplyScalar(extendDistance * 0.5));
+
+    // Create cubic bezier curve that loops back to the start
+    const curve = new Three.CubicBezierCurve3(
+        position,      // Start at marker
+        control1,      // Extend in one direction
+        control2,      // Extend in opposite direction
+        position       // Return to marker
+    );
+
+    // Generate tube geometry from curve
+    const tubeGeometry = new Three.TubeGeometry(
+        curve,
+        tubularSegments,
+        tubeRadius,
+        radialSegments,
+        false
+    );
+
+    // Create material with glow effect
+    const material = new Three.MeshStandardMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.7,
+        emissive: color,
+        emissiveIntensity: emissiveIntensity,
+        metalness: 0.0,
+        roughness: 0.5
+    });
+
+    // Create mesh and add to group
+    const tubeMesh = new Three.Mesh(tubeGeometry, material);
+    curveGroup.add(tubeMesh);
+
+    return curveGroup;
 };
