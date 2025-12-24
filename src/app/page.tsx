@@ -52,10 +52,11 @@ export default function Home() {
     setError(null);
     try {
       const response = await fetch(
-        `http://localhost:8000/papers/by-category?category=${category}&index=${index}`
+        `/api/papers?category=${category}&index=${index}`
       );
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       setPaperData(data);
