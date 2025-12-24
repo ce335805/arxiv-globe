@@ -7,6 +7,15 @@ export interface Affiliation {
   geocoded: boolean;
 }
 
+/**
+ * An affiliation that has been successfully geocoded with valid coordinates.
+ */
+export interface ValidAffiliation extends Omit<Affiliation, 'latitude' | 'longitude'> {
+  latitude: number;
+  longitude: number;
+  geocoded: true;
+}
+
 export interface Author {
   name: string;
 }
