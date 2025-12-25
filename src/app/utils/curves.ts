@@ -122,7 +122,7 @@ export const createSelfLoopCurve = (
         tangent = new Three.Vector3(0, 1, 0).cross(radialDir).normalize();
     }
 
-    const loopHeight = 0.3;
+    const loopHeight = 0.5;
 
     // Control points for the loop
     const control1 = position.clone()
