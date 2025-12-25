@@ -16,6 +16,9 @@ export const useGlobeScene = () => {
     const targetRotationYRef = useRef<number>(0);
     const isRotatingRef = useRef<boolean>(false);
     const markerGroupRef = useRef<Three.Group | null>(null);
+    const cameraRef = useRef<Three.PerspectiveCamera | null>(null);
+    const controlsRef = useRef<OrbitControls | null>(null);
+    const wasRotatingRef = useRef<boolean>(false);
 
     const setMarkerGroup = useCallback((group: Three.Group | null) => {
         markerGroupRef.current = group;
@@ -36,6 +39,7 @@ export const useGlobeScene = () => {
         // Camera setup
         const camera = new Three.PerspectiveCamera(70, width / height, 0.005, 10);
         camera.position.z = 2.2;
+        cameraRef.current = camera;
 
         // Renderer setup
         const renderer = new Three.WebGLRenderer({ antialias: true });
@@ -55,6 +59,7 @@ export const useGlobeScene = () => {
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.6; // Similar speed to current rotation
         controls.update(); // Apply target changes
+        controlsRef.current = controls;
 
         // Create a group to hold the sphere and landmass
         const globeGroup = new Three.Group();
@@ -103,6 +108,18 @@ export const useGlobeScene = () => {
         const renderScene = () => {
             // Manual rotation to target (when paper loads)
             if (isRotatingRef.current) {
+                // Check if rotation just started (transition from false to true)
+                if (!wasRotatingRef.current) {
+                    // Reset view to look at equator head-on
+                    camera.position.set(0, 0, 2.2);
+                    controls.target.set(0, 0.3, 0);
+                    // Reset globe rotations except Y (which will be set by the animation)
+                    globeGroup.rotation.x = 0;
+                    globeGroup.rotation.z = 0;
+                    controls.update();
+                    wasRotatingRef.current = true;
+                }
+
                 // Disable OrbitControls auto-rotation during manual rotation
                 controls.autoRotate = false;
 
@@ -121,6 +138,7 @@ export const useGlobeScene = () => {
                 if (Math.abs(diff) < 0.01) {
                     globeGroup.rotation.y = targetRotation;
                     isRotatingRef.current = false;
+                    wasRotatingRef.current = false;
                     controls.autoRotate = true; // Re-enable auto-rotation
                 }
             }
