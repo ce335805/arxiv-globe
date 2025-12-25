@@ -34,6 +34,7 @@ export const useGlobeScene = () => {
 
         // Camera setup
         const camera = new Three.PerspectiveCamera(70, width / height, 0.005, 10);
+        camera.position.y = 0.35;
         camera.position.z = 2.3;
 
         // Renderer setup
