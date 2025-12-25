@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import * as Three from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { drawLandmassOnGlobe } from "../utils/landmass";
 import { updateMarkerPulse } from "../utils/markers";
 
@@ -34,14 +35,26 @@ export const useGlobeScene = () => {
 
         // Camera setup
         const camera = new Three.PerspectiveCamera(70, width / height, 0.005, 10);
-        camera.position.y = 0.35;
-        camera.position.z = 2.3;
+        camera.position.z = 2.2;
 
         // Renderer setup
         const renderer = new Three.WebGLRenderer({ antialias: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
+
+        // OrbitControls setup
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0.3, 0); // Move target down to position globe lower in viewport
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enablePan = false;
+        controls.enableZoom = true;
+        controls.minDistance = 1.5;
+        controls.maxDistance = 4.0;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.6; // Similar speed to current rotation
+        controls.update(); // Apply target changes
 
         // Create a group to hold the sphere and landmass
         const globeGroup = new Three.Group();
@@ -88,8 +101,11 @@ export const useGlobeScene = () => {
         // Animation loop
         let animationFrameId: number;
         const renderScene = () => {
-            // Smooth rotation towards target or continuous rotation
+            // Manual rotation to target (when paper loads)
             if (isRotatingRef.current) {
+                // Disable OrbitControls auto-rotation during manual rotation
+                controls.autoRotate = false;
+
                 const currentRotation = globeGroup.rotation.y;
                 const targetRotation = targetRotationYRef.current;
 
@@ -105,11 +121,12 @@ export const useGlobeScene = () => {
                 if (Math.abs(diff) < 0.01) {
                     globeGroup.rotation.y = targetRotation;
                     isRotatingRef.current = false;
+                    controls.autoRotate = true; // Re-enable auto-rotation
                 }
-            } else {
-                // Continuous slow rotation
-                globeGroup.rotation.y += 0.001;
             }
+
+            // Update OrbitControls (handles auto-rotation and damping)
+            controls.update();
 
             // Update marker pulsing animation
             if (markerGroupRef.current) {
@@ -138,6 +155,7 @@ export const useGlobeScene = () => {
         return () => {
             window.removeEventListener("resize", handleResize);
             cancelAnimationFrame(animationFrameId);
+            controls.dispose();
             if (container && renderer.domElement.parentNode === container) {
                 container.removeChild(renderer.domElement);
             }
